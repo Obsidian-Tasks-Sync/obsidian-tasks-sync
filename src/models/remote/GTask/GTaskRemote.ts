@@ -87,6 +87,9 @@ export class GTaskRemote implements Remote {
       throw new Error("There's no authentication. Please login to Google at Settings.");
     }
 
+    // API 호출 전 토큰 갱신 보장
+    await this._auth.ensureValidToken();
+
     return this._client;
   }
 

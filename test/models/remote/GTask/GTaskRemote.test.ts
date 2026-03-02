@@ -29,6 +29,7 @@ vi.mock('src/models/remote/gtask/GTaskAuthorization', () => ({
     authorize: vi.fn(),
     unauthorize: vi.fn(),
     checkIsAuthorized: vi.fn(),
+    ensureValidToken: vi.fn(),
     getAuthClient: vi.fn(() => ({})),
     dispose: vi.fn(),
   })),
@@ -44,6 +45,14 @@ describe('GTaskRemote', () => {
   let mockApp: any;
   let mockPlugin: any;
   let mockSettings: GTaskSettingsData;
+
+  /** Call after gTaskRemote.init() to ensure _auth mock methods are vi.fn() spies */
+  function mockAuthMethods() {
+    const auth = gTaskRemote['_auth'];
+    if (auth) {
+      auth.ensureValidToken = vi.fn();
+    }
+  }
 
   beforeEach(() => {
     mockApp = {
@@ -159,6 +168,7 @@ describe('GTaskRemote', () => {
   describe('assure', () => {
     it('should return client when initialized', async () => {
       await gTaskRemote.init();
+      mockAuthMethods();
 
       const client = await gTaskRemote['assure']();
 
@@ -170,11 +180,34 @@ describe('GTaskRemote', () => {
         "There's no authentication. Please login to Google at Settings.",
       );
     });
+
+    it('should call ensureValidToken before returning client', async () => {
+      await gTaskRemote.init();
+      const mockAuth = gTaskRemote['_auth']!;
+      mockAuth.ensureValidToken = vi.fn();
+
+      await gTaskRemote['assure']();
+
+      expect(mockAuth.ensureValidToken).toHaveBeenCalled();
+    });
+
+    it('should propagate ensureValidToken error', async () => {
+      await gTaskRemote.init();
+      const mockAuth = gTaskRemote['_auth']!;
+      mockAuth.ensureValidToken = vi.fn().mockRejectedValue(
+        new Error('Token refresh failed. Please re-authorize in Settings.'),
+      );
+
+      await expect(gTaskRemote['assure']()).rejects.toThrow(
+        'Token refresh failed. Please re-authorize in Settings.',
+      );
+    });
   });
 
   describe('get', () => {
     beforeEach(async () => {
       await gTaskRemote.init();
+      mockAuthMethods();
     });
 
     it('should get task successfully', async () => {
@@ -228,6 +261,7 @@ describe('GTaskRemote', () => {
   describe('update', () => {
     beforeEach(async () => {
       await gTaskRemote.init();
+      mockAuthMethods();
     });
 
     it('should update task successfully', async () => {
@@ -272,6 +306,7 @@ describe('GTaskRemote', () => {
   describe('create', () => {
     beforeEach(async () => {
       await gTaskRemote.init();
+      mockAuthMethods();
     });
 
     it('should create task successfully', async () => {
@@ -326,6 +361,7 @@ describe('GTaskRemote', () => {
   describe('getTasklists', () => {
     beforeEach(async () => {
       await gTaskRemote.init();
+      mockAuthMethods();
     });
 
     it('should get tasklists successfully', async () => {
@@ -349,6 +385,7 @@ describe('GTaskRemote', () => {
   describe('getTasks', () => {
     beforeEach(async () => {
       await gTaskRemote.init();
+      mockAuthMethods();
     });
 
     it('should get tasks successfully', async () => {
@@ -376,6 +413,7 @@ describe('GTaskRemote', () => {
   describe('getAllTasks', () => {
     beforeEach(async () => {
       await gTaskRemote.init();
+      mockAuthMethods();
     });
 
     it('should get all tasks from default tasklist', async () => {
