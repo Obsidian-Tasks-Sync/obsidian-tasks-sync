@@ -23,7 +23,7 @@ vi.mock('googleapis', () => ({
 }));
 
 // Mock GTaskAuthorization
-vi.mock('src/models/remote/gtask/GTaskAuthorization', () => ({
+vi.mock('src/models/remote/GTask/GTaskAuthorization', () => ({
   GTaskAuthorization: vi.fn().mockImplementation(() => ({
     init: vi.fn(),
     authorize: vi.fn(),
@@ -162,6 +162,39 @@ describe('GTaskRemote', () => {
       const result = await remoteWithoutAuth.checkIsAuthorized();
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe('authorize() lazy init', () => {
+    it('should create _auth and _client when called without prior init', () => {
+      expect(gTaskRemote['_auth']).toBeUndefined();
+      expect(gTaskRemote['_client']).toBeUndefined();
+
+      gTaskRemote['ensureAuth']();
+
+      expect(gTaskRemote['_auth']).toBeDefined();
+      expect(gTaskRemote['_client']).toBeDefined();
+    });
+
+    it('should throw error when settings are missing', () => {
+      const remoteWithoutCreds = new GTaskRemote(mockApp, mockPlugin, {
+        googleClientId: null,
+        googleClientSecret: null,
+      });
+
+      expect(() => remoteWithoutCreds['ensureAuth']()).toThrow(
+        'Google Client ID and Secret are required.',
+      );
+    });
+
+    it('should call _auth.authorize() after lazy init', async () => {
+      gTaskRemote['ensureAuth']();
+      const mockAuth = gTaskRemote['_auth']!;
+      mockAuth.authorize = vi.fn();
+
+      await gTaskRemote.authorize();
+
+      expect(mockAuth.authorize).toHaveBeenCalled();
     });
   });
 

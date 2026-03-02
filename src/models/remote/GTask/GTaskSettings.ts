@@ -1,4 +1,4 @@
-import { Setting } from 'obsidian';
+import { Notice, Setting } from 'obsidian';
 import TaskSyncPlugin from 'src/main';
 import { RemoteSettingPanel } from '../Remote';
 import { GTaskRemote } from './GTaskRemote';
@@ -45,16 +45,23 @@ export class GTaskSettingTab extends RemoteSettingPanel<GTaskSettingsData> {
 
       new Setting(container).setName('Connect Google Tasks').addButton((button) => {
         button.setButtonText('Connect').onClick(async () => {
-          this.rerender();
-          await this.remote.authorize();
-
-          this.plugin.activateAuthCheckInterval(this.remote);
+          try {
+            this.rerender();
+            await this.remote.authorize();
+            this.plugin.activateAuthCheckInterval(this.remote);
+          } catch (error) {
+            new Notice(`Failed to connect: ${error.message}`);
+          }
         });
       });
     } else {
       new Setting(container).setName('Connect Google Tasks').addButton((button) => {
         button.setButtonText('Disconnect').onClick(async () => {
-          await this.remote.unauthorize();
+          try {
+            await this.remote.unauthorize();
+          } catch (error) {
+            new Notice(`Disconnect error: ${error.message}`);
+          }
           this.plugin.setIsAuthorized(false);
           this.rerender();
         });
