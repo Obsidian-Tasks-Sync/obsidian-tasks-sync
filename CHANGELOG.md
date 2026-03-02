@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## [1.2.3](https://github.com/Obsidian-Tasks-Sync/obsidian-tasks-sync/compare/1.2.2...v1.2.3) (2026-03-02)
+
+
+### Bug Fixes
+
+* Connect/Disconnect buttons not working in Google Tasks settings ([1f7295f](https://github.com/Obsidian-Tasks-Sync/obsidian-tasks-sync/commit/1f7295fed83d468599c4413e5d5bca927ba7621c))
+* Connect/Disconnect buttons not working in Google Tasks settings ([b45d398](https://github.com/Obsidian-Tasks-Sync/obsidian-tasks-sync/commit/b45d398e70ace6abe74b69672fe3b0254684f70a))
+* ensure Google access token auto-refreshes before API calls ([8136d46](https://github.com/Obsidian-Tasks-Sync/obsidian-tasks-sync/commit/8136d46c84650b4085b30266835c4400de07ec2d))
+* Google access token 자동 갱신 및 중복 초기화 제거 ([f151679](https://github.com/Obsidian-Tasks-Sync/obsidian-tasks-sync/commit/f151679c7d81ab2d4fbf24f1cdee2b0c03d893bc))
+* skip unconfigured remotes during sync to prevent repeated notices ([128cdd9](https://github.com/Obsidian-Tasks-Sync/obsidian-tasks-sync/commit/128cdd947d2b92a73da6e7b2218d3abe3769c174))
+
 ## [1.2.2](https://github.com/Obsidian-Tasks-Sync/obsidian-tasks-sync/compare/v1.2.1...v1.2.2) (2025-06-22)
 
 

@@ -3,7 +3,7 @@
   "name": "Tasks Sync",
   "description": "Sync your tasks with any other task manager",
   "author": "이게대체MERGE",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "minAppVersion": "0.15.0",
   "isDesktopOnly": true
 }
