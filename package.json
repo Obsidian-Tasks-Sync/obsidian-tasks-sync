@@ -1,6 +1,6 @@
 {
   "name": "obsidian-tasks-sync-plugins",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Obsidian Tasks Sync Plugin",
   "main": "main.js",
   "private": true,
