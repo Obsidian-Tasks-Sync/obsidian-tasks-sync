@@ -70,8 +70,22 @@ export class GTaskRemote implements Remote {
     this._auth?.dispose();
   }
 
+  private ensureAuth() {
+    if (this._auth == null) {
+      if (this.settings.googleClientId == null || this.settings.googleClientSecret == null) {
+        throw new Error('Google Client ID and Secret are required.');
+      }
+      this._auth = new GTaskAuthorization(this.app, this.settings.googleClientId, this.settings.googleClientSecret);
+      this._client = google.tasks({
+        version: 'v1',
+        auth: this._auth.getAuthClient(),
+      });
+    }
+  }
+
   async authorize() {
-    await this._auth?.authorize();
+    this.ensureAuth();
+    await this._auth!.authorize();
   }
 
   async unauthorize() {

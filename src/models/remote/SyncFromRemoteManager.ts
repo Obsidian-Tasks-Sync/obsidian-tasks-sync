@@ -22,11 +22,14 @@ export class SyncFromRemoteManager {
     }, this.syncIntervalMs);
   }
 
+  // TODO: on/off 버튼 만들기
   private async syncFromRemote(): Promise<void> {
     try {
       const remoteTasks = [];
       for (const remote of this.remotes) {
-        // 각 Remote의 모든 태스크 조회
+        if (!(await remote.checkIsAuthorized())) {
+          continue;
+        }
         const remotedTask = await remote.getAllTasks();
         remoteTasks.push(...remotedTask);
       }

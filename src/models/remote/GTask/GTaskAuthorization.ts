@@ -102,12 +102,14 @@ export class GTaskAuthorization {
   }
 
   async unauthorize() {
-    const accessToken = (await this.authClient.getAccessToken()).token;
-    if (accessToken == null) {
-      return;
+    try {
+      const accessToken = (await this.authClient.getAccessToken()).token;
+      if (accessToken != null) {
+        await this.authClient.revokeToken(accessToken);
+      }
+    } catch {
+      // Token revocation may fail (e.g. invalid_grant), but we still clear local credentials
     }
-
-    await this.authClient.revokeToken(accessToken);
     this.authClient.setCredentials({});
     this.persistedCredentials.set({});
     this.server?.close();
