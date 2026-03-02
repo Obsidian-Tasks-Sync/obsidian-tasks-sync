@@ -7,14 +7,20 @@ import * as http from 'http';
 
 // Mocks
 vi.mock('google-auth-library', () => ({
-  OAuth2Client: vi.fn().mockImplementation(() => ({
-    setCredentials: vi.fn(),
-    getAccessToken: vi.fn(),
-    getTokenInfo: vi.fn(),
-    refreshAccessToken: vi.fn(),
-    generateAuthUrl: vi.fn(),
-    getToken: vi.fn(),
-  })),
+  OAuth2Client: vi.fn().mockImplementation(() => {
+    const instance: any = {
+      credentials: {},
+      setCredentials: vi.fn((creds: any) => {
+        instance.credentials = creds;
+      }),
+      getAccessToken: vi.fn(),
+      getTokenInfo: vi.fn(),
+      refreshAccessToken: vi.fn(),
+      generateAuthUrl: vi.fn(),
+      getToken: vi.fn(),
+    };
+    return instance;
+  }),
 }));
 
 vi.mock('http', () => ({
@@ -46,6 +52,117 @@ describe('GTaskAuthorization', () => {
 
   it('getAuthClient returns the OAuth2Client instance', () => {
     expect(auth.getAuthClient()).toBe(oAuthInstance);
+  });
+
+  describe('init', () => {
+    it('should preserve refresh_token when refreshAccessToken loses it', async () => {
+      const savedTokens = {
+        access_token: 'old-access',
+        refresh_token: 'my-refresh-token',
+        expiry_date: Date.now() - 10000,
+      };
+      const persistedCredentials = (auth as any).persistedCredentials;
+      persistedCredentials.get.mockResolvedValue(savedTokens);
+
+      // After refreshAccessToken, credentials lose refresh_token
+      oAuthInstance.refreshAccessToken.mockImplementation(async () => {
+        oAuthInstance.credentials = {
+          access_token: 'new-access',
+          // refresh_token is missing!
+          expiry_date: Date.now() + 3600000,
+        };
+      });
+
+      await auth.init();
+
+      // Should restore refresh_token from saved tokens
+      expect(oAuthInstance.credentials.refresh_token).toBe('my-refresh-token');
+      // Should persist the restored credentials
+      expect(persistedCredentials.set).toHaveBeenCalledWith(
+        expect.objectContaining({ refresh_token: 'my-refresh-token' }),
+      );
+    });
+
+    it('should not overwrite refresh_token if refreshAccessToken preserves it', async () => {
+      const savedTokens = {
+        access_token: 'old-access',
+        refresh_token: 'my-refresh-token',
+        expiry_date: Date.now() - 10000,
+      };
+      const persistedCredentials = (auth as any).persistedCredentials;
+      persistedCredentials.get.mockResolvedValue(savedTokens);
+
+      oAuthInstance.refreshAccessToken.mockImplementation(async () => {
+        oAuthInstance.credentials = {
+          access_token: 'new-access',
+          refresh_token: 'my-refresh-token',
+          expiry_date: Date.now() + 3600000,
+        };
+      });
+
+      await auth.init();
+
+      expect(oAuthInstance.credentials.refresh_token).toBe('my-refresh-token');
+      expect(persistedCredentials.set).toHaveBeenCalled();
+    });
+
+    it('should not throw when refreshAccessToken fails', async () => {
+      const savedTokens = {
+        access_token: 'old-access',
+        refresh_token: 'my-refresh-token',
+        expiry_date: Date.now() - 10000,
+      };
+      const persistedCredentials = (auth as any).persistedCredentials;
+      persistedCredentials.get.mockResolvedValue(savedTokens);
+
+      oAuthInstance.refreshAccessToken.mockRejectedValue(new Error('Network error'));
+
+      // Should not throw
+      await expect(auth.init()).resolves.not.toThrow();
+      // Should not persist (keeps saved credentials intact)
+      expect(persistedCredentials.set).not.toHaveBeenCalled();
+    });
+
+    it('should do nothing when no saved tokens exist', async () => {
+      const persistedCredentials = (auth as any).persistedCredentials;
+      persistedCredentials.get.mockResolvedValue(null);
+
+      await auth.init();
+
+      expect(oAuthInstance.setCredentials).not.toHaveBeenCalled();
+      expect(oAuthInstance.refreshAccessToken).not.toHaveBeenCalled();
+      expect(persistedCredentials.set).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ensureValidToken', () => {
+    it('should call getAccessToken and persist refreshed credentials', async () => {
+      oAuthInstance.getAccessToken.mockResolvedValue({ token: 'valid-token' });
+      oAuthInstance.credentials = {
+        access_token: 'valid-token',
+        refresh_token: 'my-refresh',
+        expiry_date: Date.now() + 3600000,
+      };
+
+      const persistedCredentials = (auth as any).persistedCredentials;
+
+      await auth.ensureValidToken();
+
+      expect(oAuthInstance.getAccessToken).toHaveBeenCalled();
+      expect(persistedCredentials.set).toHaveBeenCalledWith(oAuthInstance.credentials);
+    });
+
+    it('should throw when getAccessToken returns null token', async () => {
+      oAuthInstance.getAccessToken.mockResolvedValue({ token: null });
+
+      await expect(auth.ensureValidToken()).rejects.toThrow('Token refresh failed. Please re-authorize in Settings.');
+    });
+
+    it('should throw when getAccessToken fails', async () => {
+      oAuthInstance.getAccessToken.mockRejectedValue(new Error('No refresh token'));
+
+      await expect(auth.ensureValidToken()).rejects.toThrow('Token refresh failed. Please re-authorize in Settings.');
+    });
   });
 
   it('dispose closes the server if exists', () => {

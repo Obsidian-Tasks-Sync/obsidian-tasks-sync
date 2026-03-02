@@ -39,10 +39,35 @@ export class GTaskAuthorization {
 
     if (savedTokens != null) {
       this.authClient.setCredentials(savedTokens);
-      // refresh token if it expired
-      await this.authClient.refreshAccessToken();
-      // refrhesh 된 credentials들을 다시 저장
+
+      try {
+        await this.authClient.refreshAccessToken();
+      } catch {
+        // refresh 실패 시 저장된 credentials 유지 (다음 API 호출 시 재시도)
+        return;
+      }
+
+      // refresh_token이 유실되지 않도록 명시적으로 보존
+      const refreshedCredentials = this.authClient.credentials;
+      if (refreshedCredentials.refresh_token == null && savedTokens.refresh_token != null) {
+        refreshedCredentials.refresh_token = savedTokens.refresh_token;
+        this.authClient.setCredentials(refreshedCredentials);
+      }
       await this.persistedCredentials.set(this.authClient.credentials);
+    }
+  }
+
+  async ensureValidToken() {
+    try {
+      // getAccessToken()은 만료 시 자동으로 refresh 시도
+      const { token } = await this.authClient.getAccessToken();
+      if (token == null) {
+        throw new Error('Access token is null');
+      }
+      // 갱신된 credentials 저장
+      await this.persistedCredentials.set(this.authClient.credentials);
+    } catch {
+      throw new Error('Token refresh failed. Please re-authorize in Settings.');
     }
   }
 
